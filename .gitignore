@@ -127,3 +127,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# PDF
+*.pdf
+
+# Data npz
+*.npz
