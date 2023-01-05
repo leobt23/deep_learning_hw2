@@ -17,17 +17,29 @@ import utils
 
 class CNN(nn.Module):
     
-    def __init__(self, dropout_prob):
-        """
-        The __init__ should be used to declare what kind of layers and other
-        parameters the module has. For example, a CNN module has convolution,
-        max pooling, activation, linear, and other types of layers. For an 
-        idea of how to us pytorch for this have a look at
-        https://pytorch.org/docs/stable/nn.html
-        """
+    def __init__(self, dropout_prob: float = 0.3) -> None:
+
         super(CNN, self).__init__()
+
+        # Input 28 x 28 image 
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(in_channels=1 ,out_channels=8, kernel_size=5, stride=1, padding='same'),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2)
+        )
+
+        self.conv2 = nn.Sequential(
+            nn.Conv2d(in_channels=8 ,out_channels=16, kernel_size=3, stride=2, padding=0),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2)
+        )
+
+        self.affine_transf1 = nn.Linear(in_features = 16*3*3, out_features = 600)
+        self.affine_transf2 = nn.Linear(in_features = 600, out_features = 120)
+        self.affine_transf3 = nn.Linear(in_features = 120, out_features = 10)
         
-        # Implement me!
+        self.dropout_p = nn.Dropout2d(dropout_prob)
+        
         
     def forward(self, x):
         """
@@ -45,7 +57,22 @@ class CNN(nn.Module):
         forward pass -- this is enough for it to figure out how to do the
         backward pass.
         """
-        raise NotImplementedError
+
+        x = x.view(-1, 1, 28, 28)
+        # Batch size = 8, images 28x28 =>
+        # x.shape = [8, 1, 28, 28]
+        x = self.conv1(x)
+        # x.shape = [8, 8, 14, 14]
+        x = self.conv2(x)
+        # x.shape = [8, 16, 3, 3]
+        x = x.view(-1,16*3*3)
+        x = F.relu(self.affine_transf1(x))
+        x = self.dropout_p(x)
+        x = F.relu(self.affine_transf2(x))
+        x = self.affine_transf3(x)
+        x = F.log_softmax(x,dim=1)
+
+        return x
 
 def train_batch(X, y, model, optimizer, criterion, **kwargs):
     """
@@ -65,7 +92,16 @@ def train_batch(X, y, model, optimizer, criterion, **kwargs):
     This function should return the loss (tip: call loss.item()) to get the
     loss as a numerical value that is not part of the computation graph.
     """
-    raise NotImplementedError
+    optimizer.zero_grad()
+    out = model(X, **kwargs)
+    y[0] = 9
+    y = y.view(-1)
+    #out = out.view(-1)
+    loss = criterion(out, y)
+    loss.backward()
+    optimizer.step()
+
+    return loss.item()
 
 def predict(model, X):
     """X (n_examples x n_features)"""
@@ -133,7 +169,7 @@ def main():
     opt.learning_rate = 0.01
     opt.l2_decay = 0
     opt.dropout = 0.8
-    opt.optimizer = 'sgd'
+    opt.optimizer = "adam"
 
     utils.configure_seed(seed=42)
 
