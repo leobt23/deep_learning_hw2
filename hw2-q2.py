@@ -29,12 +29,12 @@ class CNN(nn.Module):
         )
 
         self.conv2 = nn.Sequential(
-            nn.Conv2d(in_channels=8 ,out_channels=16, kernel_size=3, stride=2, padding=0),
+            nn.Conv2d(in_channels=8 ,out_channels=16, kernel_size=3, stride=1, padding=0),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2)
         )
 
-        self.affine_transf1 = nn.Linear(in_features = 16*3*3, out_features = 600)
+        self.affine_transf1 = nn.Linear(in_features = 16*6*6, out_features = 600)
         self.affine_transf2 = nn.Linear(in_features = 600, out_features = 120)
         self.affine_transf3 = nn.Linear(in_features = 120, out_features = 10)
         
@@ -46,27 +46,20 @@ class CNN(nn.Module):
         x (batch_size x n_channels x height x width): a batch of training 
         examples
 
-        Every subclass of nn.Module needs to have a forward() method. forward()
-        describes how the module computes the forward pass. This method needs 
-        to perform all the computation needed to compute the output from x. 
-        This will include using various hidden layers, pointwise nonlinear 
-        functions, and dropout. Don't forget to use logsoftmax function before 
-        the return
-
-        One nice thing about pytorch is that you only need to define the
-        forward pass -- this is enough for it to figure out how to do the
-        backward pass.
+        forward() describes how the module computes the forward pass. 
         """
 
+        # (batch_size, channels input, input height, input weight (images 28x28))
+        
+        # x.shape = [batch = 8, inputs = 1, 28, 28]]
         x = x.view(-1, 1, 28, 28)
-        # Batch size = 8, images 28x28 =>
-        # x.shape = [8, 1, 28, 28]
         x = self.conv1(x)
         # x.shape = [8, 8, 14, 14]
         x = self.conv2(x)
         # x.shape = [8, 16, 3, 3]
-        x = x.view(-1,16*3*3)
+        x = x.view(-1,16*6*6)
         x = F.relu(self.affine_transf1(x))
+        #TODO change dropout bcs will be deprecated
         x = self.dropout_p(x)
         x = F.relu(self.affine_transf2(x))
         x = self.affine_transf3(x)
@@ -94,9 +87,7 @@ def train_batch(X, y, model, optimizer, criterion, **kwargs):
     """
     optimizer.zero_grad()
     out = model(X, **kwargs)
-    y[0] = 9
-    y = y.view(-1)
-    #out = out.view(-1)
+    #y = y.view(-1)
     loss = criterion(out, y)
     loss.backward()
     optimizer.step()
@@ -168,7 +159,7 @@ def main():
     opt.batch_size = 8
     opt.learning_rate = 0.01
     opt.l2_decay = 0
-    opt.dropout = 0.8
+    opt.dropout = 0.3
     opt.optimizer = "adam"
 
     utils.configure_seed(seed=42)
