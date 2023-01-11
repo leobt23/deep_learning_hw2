@@ -15,6 +15,9 @@ import numpy as np
 
 import utils
 
+# selects a gpu for you, if you have one. 
+DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 class CNN(nn.Module):
     
     def __init__(self, dropout_prob: float = 0.3) -> None:
@@ -56,7 +59,7 @@ class CNN(nn.Module):
         x = self.conv1(x)
         # x.shape = [8, 8, 14, 14]
         x = self.conv2(x)
-        # x.shape = [8, 16, 3, 3]
+        # x.shape = [8, 16, 6, 6]
         x = x.view(-1,16*6*6)
         x = F.relu(self.affine_transf1(x))
         #TODO change dropout bcs will be deprecated
@@ -87,7 +90,6 @@ def train_batch(X, y, model, optimizer, criterion, **kwargs):
     """
     optimizer.zero_grad()
     out = model(X, **kwargs)
-    #y = y.view(-1)
     loss = criterion(out, y)
     loss.backward()
     optimizer.step()
@@ -168,11 +170,12 @@ def main():
     dataset = utils.ClassificationDataset(data)
     train_dataloader = DataLoader(
         dataset, batch_size=opt.batch_size, shuffle=True)
-    dev_X, dev_y = dataset.dev_X, dataset.dev_y
-    test_X, test_y = dataset.test_X, dataset.test_y
+    dev_X, dev_y = dataset.dev_X.to(DEVICE), dataset.dev_y.to(DEVICE)
+
+    test_X, test_y = dataset.test_X.to(DEVICE), dataset.test_y.to(DEVICE)
 
     # initialize the model
-    model = CNN(opt.dropout)
+    model = CNN(opt.dropout).to(DEVICE)
     
     # get an optimizer
     optims = {"adam": torch.optim.Adam, "sgd": torch.optim.SGD}
