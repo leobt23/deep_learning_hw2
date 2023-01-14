@@ -29,38 +29,33 @@ class Attention(nn.Module):
         encoder_outputs,
         src_lengths,
     ):
+        
         # query: (batch_size, 1, hidden_dim)
         # encoder_outputs: (batch_size, max_src_len, hidden_dim)
         # src_lengths: (batch_size)
-
+        # we will need to use this mask to assign float("-inf") in the attention scores
+        # of the padding tokens (such that the output of the softmax is 0 in those positions)
         # Tip: use torch.masked_fill to do this
         # src_seq_mask: (batch_size, max_src_len)
         # the "~" is the elementwise NOT operator
         src_seq_mask = ~self.sequence_mask(src_lengths)
-        #############################################
-        # TODO: Implement the forward pass of the attention layer
-        # Hints:
-
-
+        
         # attn_out: (batch_size, 1, hidden_size)
         query = self.linear_in(query)
         # - Use torch.bmm to do the batch matrix multiplication
         #    (it does matrix multiplication for each sample in the batch)
-        attn_scores = torch.bmm(query, encoder_outputs.transpose(1,2))
-        attn_scores = attn_scores.squeeze(1)
+        attn_scores = torch.bmm(query, encoder_outputs.transpose(1, 2))
+        # attn_scores = attn_scores.squeeze(1)
         # we will need to use this mask to assign float("-inf") in the attention scores
         # of the padding tokens (such that the output of the softmax is 0 in those positions)
         # - Use torch.masked_fill to do the masking of the padding tokens
         attn_scores = attn_scores.masked_fill(src_seq_mask.unsqueeze(1), float("-inf"))
 
-        # - Use torch.softmax to do the softmax
-        attn_weights = F.softmax(attn_scores, dim=-1)
+        attn_weights = torch.softmax(attn_scores, dim=-1)
         context = torch.bmm(attn_weights, encoder_outputs)
-        attn_out = self.linear_out(torch.cat((context, query), -1))
+        attn_out = torch.tanh(self.linear_out(torch.cat((query, context), -1)))
 
-        # - Use torch.tanh to do the tanh
-        attn_out = torch.tanh(attn_out)
-        
+
         return attn_out
 
     def sequence_mask(self, lengths):
@@ -198,12 +193,11 @@ class Decoder(nn.Module):
 
         output, dec_state = self.lstm(tgt_emb, dec_state)
 
-        outputs = self.dropout(output)  
-
         # encoder_outputs é a matriz com todos os hidden states. Vai ser tudo enviado para o attention para 
-        #   
         if self.attn is not None:
             output = self.attn(output, encoder_outputs, src_lengths)
+
+        outputs = self.dropout(output)  
 
         return outputs, dec_state
 

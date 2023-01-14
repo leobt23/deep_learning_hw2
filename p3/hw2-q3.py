@@ -189,7 +189,7 @@ def main():
     opt.batch_size = 64
     opt.hidden_size = 128 
     opt.seed = 42 
-    opt.use_attn = False
+    opt.use_attn = True
 
 
     configure_seed(opt.seed)
